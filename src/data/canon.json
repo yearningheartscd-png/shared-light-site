@@ -1,0 +1,1246 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "generated_at": "2026-02-10T00:43:14.923270Z",
+    "notes": [
+      "Data-driven canon for Atlas v0.1 (2D semantic-zoom).",
+      "Operator tone; no metaphysical claims; no narrative storage.",
+      "WHY (DIM=T4) is write-only residue; never runtime steering."
+    ]
+  },
+  "enums": {
+    "temp": [
+      "COOL",
+      "WARM",
+      "HOT",
+      "NEUTRAL"
+    ],
+    "dim": [
+      "T0",
+      "T1",
+      "T2",
+      "T3",
+      "T4"
+    ],
+    "types": [
+      "Layer",
+      "Protocol",
+      "Token",
+      "Receipt",
+      "Gate",
+      "Artifact"
+    ]
+  },
+  "objects": [
+    {
+      "id": "TEMP",
+      "type": "Token",
+      "name": "Temperature Routing",
+      "one_liner": "Universal routing signal: COOL/WARM/HOT (NEUTRAL for baseline tokens).",
+      "description": "Controls pacing, access, and allowable operations. HOT is gated and downshifts under drift.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "HOT is gated; auto-downshift HOT\u2192WARM\u2192COOL under instability."
+      ],
+      "links": [
+        "FSP1",
+        "TLB"
+      ]
+    },
+    {
+      "id": "DIM",
+      "type": "Token",
+      "name": "KayOS Dimension Cap",
+      "one_liner": "Tiered access: T1 WHAT/WHEN/WHERE; T2 +WHO/HOW; T3 +WHICH (temporary); T4 WHY (write-only).",
+      "description": "Runtime prevents WHY authority; WHY permitted only as post-hoc residue/archival note.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "DIM=T4 is never used for runtime steering."
+      ],
+      "links": [
+        "JANUS"
+      ]
+    },
+    {
+      "id": "DRIFT",
+      "type": "Token",
+      "name": "Drift Buckets A\u2013E",
+      "one_liner": "Counts-based drift triggers for automated downshift and quarantine.",
+      "description": "A=Heat instability/TLB; B=Identity capture; C=Meaning capture/WHY authority; D=Consent+dominance drift; E=Coupling contagion.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "Severity computed from count density (thermometer), not moderator judgment."
+      ],
+      "links": [
+        "FSP1",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "CLOSE",
+      "type": "Token",
+      "name": "Closure Codes (11/0/12)",
+      "one_liner": "11=quarantine/lock; 0=baseline; 12=complete closure.",
+      "description": "Symbol hygiene codepath for fragmentation detection and closure enforcement.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "Any session must end with DONE12 or LOCK11; no open-ended drift."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "TE1_TOKEN",
+      "type": "Token",
+      "name": "TE-1 Airlock State",
+      "one_liner": "Threshold Engineering: CHECK/PASS/RESET states for consent+state alignment.",
+      "description": "Prevents unconsented heat and enforces dimensional caps at entry and reset.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "If instability detected \u2192 TE1=RESET; DIM=T1; TEMP=WARM."
+      ],
+      "links": [
+        "TE1",
+        "FSP1"
+      ]
+    },
+    {
+      "id": "TLB_TOKEN",
+      "type": "Token",
+      "name": "TLB Packetization",
+      "one_liner": "Packet size/cadence/hotcap routing for temporal load balancing.",
+      "description": "Controls packet duration and rate; auto-reduces under drift; enforces HOTCAP gating.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "Under drift, PKT and RATE decrease; HOTCAP tightened."
+      ],
+      "links": [
+        "TLB",
+        "FSP1"
+      ]
+    },
+    {
+      "id": "FSP",
+      "type": "Token",
+      "name": "FSP Ladder Level",
+      "one_liner": "Failsafe Stability Protocol level L0\u2013L5 (automatic response ladder).",
+      "description": "Downshift ladder that collapses temperature, dimensions, packet size, and topology to restore stability.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "No manual override by status/funding/tenure; equal application."
+      ],
+      "links": [
+        "FSP1"
+      ]
+    },
+    {
+      "id": "TOPO",
+      "type": "Token",
+      "name": "Topology / Coupling",
+      "one_liner": "Active pod topology and coupling constraints (1/3/6/12 etc).",
+      "description": "Controls group size and coupling modes; collapses under drift via FSP.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "Topology downshifts under instability; bridge sealing where required."
+      ],
+      "links": [
+        "FSP1"
+      ]
+    },
+    {
+      "id": "CAP",
+      "type": "Token",
+      "name": "Commons Arena Protocol Mode",
+      "one_liner": "CAP modes: MEMBRANE / QUARANTINE / PROMOTE0\u20135 routing.",
+      "description": "Controls artifact propagation permissions and quarantine rules.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [],
+      "writes_tokens": [],
+      "produces_receipts": [],
+      "constraints": [
+        "Promotion requires receipts; quarantine locks narrative residue."
+      ],
+      "links": [
+        "PROMOTE0",
+        "PROMOTE1",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "JANUS",
+      "type": "Protocol",
+      "name": "Janus Keyhole (WHY non-addressable)",
+      "one_liner": "WHY is write-only residue; never runtime authority or steering input.",
+      "description": "Meaning may appear only as post-action residue; if it becomes steering authority it is demoted to narrative and quarantined.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DIM",
+        "DRIFT",
+        "CLOSE"
+      ],
+      "writes_tokens": [
+        "DIM",
+        "CAP",
+        "CLOSE"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No runtime WHY answers; demote meaning-as-authority to LOCK11."
+      ],
+      "links": [
+        "DIM",
+        "DRIFT",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "TE1",
+      "type": "Protocol",
+      "name": "TE-1 Threshold Engineering",
+      "one_liner": "Consent + state airlock before any session or escalation.",
+      "description": "Enforces entry checks, sets dim caps, prevents unconsented heat; provides reset path.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT"
+      ],
+      "writes_tokens": [
+        "TE1_TOKEN",
+        "DIM",
+        "TEMP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "On destabilization: TE1=RESET; DIM=T1; TEMP=WARM; CLOSE=REQ12."
+      ],
+      "links": [
+        "FSP1",
+        "TLB",
+        "R12"
+      ]
+    },
+    {
+      "id": "TLB",
+      "type": "Protocol",
+      "name": "Temporal Load Balancing",
+      "one_liner": "Packetizes time/complexity to prevent overload and spectacle.",
+      "description": "Constrains packet size and cadence; auto-cuts under drift; enforces HOTCAP.",
+      "temp_primary": "COOL",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TLB_TOKEN",
+        "DRIFT",
+        "TEMP"
+      ],
+      "writes_tokens": [
+        "TLB_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "DRIFT\u2191 => RATE\u2193, PKT\u2193, HOTCAP tightened."
+      ],
+      "links": [
+        "FSP1",
+        "R12"
+      ]
+    },
+    {
+      "id": "FSP1",
+      "type": "Protocol",
+      "name": "Failsafe Stability Protocol (FSP-1)",
+      "one_liner": "Automatic response ladder L0\u2013L5 for drift buckets A\u2013E.",
+      "description": "Transforms social friction into technical cooling: downshift temperature, collapse dimensions, packetize time, downshift topology, enforce closure.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "TOPO",
+        "TLB_TOKEN",
+        "CLOSE"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "FSP",
+        "TOPO",
+        "TLB_TOKEN",
+        "CLOSE",
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Count-based severity; no punitive moderation; equal application."
+      ],
+      "links": [
+        "DRIFT",
+        "CLOSE",
+        "LOCK11",
+        "DONE12",
+        "PROMOTE0"
+      ]
+    },
+    {
+      "id": "SYMBOL_HYGIENE",
+      "type": "Protocol",
+      "name": "Symbol Hygiene 11/0/12",
+      "one_liner": "Detect split (11), return baseline (0), enforce closure (12).",
+      "description": "Cross-cutting drift detection and closure enforcement.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "CLOSE",
+        "DRIFT"
+      ],
+      "writes_tokens": [
+        "CLOSE"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Fragmentation triggers downshift and closure requirement."
+      ],
+      "links": [
+        "CLOSE",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "CAP_PROTOCOL",
+      "type": "Protocol",
+      "name": "Commons Arena Protocol (CAP)",
+      "one_liner": "Membrane rules for artifact sharing: credit without authority; promote only via receipts.",
+      "description": "Artifact propagation protocol with membrane rules, temperature gating, downshifts, and promotion pipeline.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "CAP",
+        "R12",
+        "DRIFT",
+        "CLOSE"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity/doctrine propagation; quarantine narrative residue."
+      ],
+      "links": [
+        "PROMOTE0",
+        "PROMOTE1",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "R12",
+      "type": "Receipt",
+      "name": "R12 Closure Receipt",
+      "one_liner": "Proof-of-integrity record of a closed session (Artifact or Null).",
+      "description": "Logs temp peak, dim cap, topology, drift counts, checklist completion, and custody commit id. No content required.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "TOPO",
+        "CLOSE"
+      ],
+      "writes_tokens": [
+        "CLOSE"
+      ],
+      "produces_receipts": [],
+      "constraints": [
+        "Container integrity only; content optional; 'Artifact or Null' allowed."
+      ],
+      "links": [
+        "DONE12",
+        "LOCK11",
+        "PROMOTE0"
+      ]
+    },
+    {
+      "id": "DONE12",
+      "type": "Receipt",
+      "name": "DONE12 Completion Signal",
+      "one_liner": "Closure code indicating complete session finish (12).",
+      "description": "Marks a session as fully closed with required checklist satisfied and custodian commit.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "CLOSE"
+      ],
+      "writes_tokens": [
+        "CLOSE"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Required for promotion gates; absence forces REQ12 or LOCK11."
+      ],
+      "links": [
+        "R12",
+        "PROMOTE0",
+        "PROMOTE1"
+      ]
+    },
+    {
+      "id": "LOCK11",
+      "type": "Receipt",
+      "name": "LOCK11 Quarantine Signal",
+      "one_liner": "Closure code indicating quarantine/lock (11).",
+      "description": "Narrative residue archived/locked; procedural fragments may be salvaged via recovery path.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "CLOSE",
+        "DRIFT"
+      ],
+      "writes_tokens": [
+        "CLOSE",
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Locks identity/meaning capture residue; prohibits promotion of narrative."
+      ],
+      "links": [
+        "R12",
+        "CAP_PROTOCOL",
+        "FSP1"
+      ]
+    },
+    {
+      "id": "PROMOTE0",
+      "type": "Gate",
+      "name": "PROMOTE0",
+      "one_liner": "Promotion gate P0 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "PROMOTE1",
+      "type": "Gate",
+      "name": "PROMOTE1",
+      "one_liner": "Promotion gate P1 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "PROMOTE2",
+      "type": "Gate",
+      "name": "PROMOTE2",
+      "one_liner": "Promotion gate P2 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "PROMOTE3",
+      "type": "Gate",
+      "name": "PROMOTE3",
+      "one_liner": "Promotion gate P3 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "PROMOTE4",
+      "type": "Gate",
+      "name": "PROMOTE4",
+      "one_liner": "Promotion gate P4 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "PROMOTE5",
+      "type": "Gate",
+      "name": "PROMOTE5",
+      "one_liner": "Promotion gate P5 (see pipeline requirements).",
+      "description": "Promotion is a function of replicated stability, not social consensus.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "DRIFT",
+        "CLOSE",
+        "CAP"
+      ],
+      "writes_tokens": [
+        "CAP"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "No identity dependency; no WHY authority; quarantine on meaning capture."
+      ],
+      "links": [
+        "R12",
+        "DONE12",
+        "LOCK11",
+        "CAP_PROTOCOL"
+      ]
+    },
+    {
+      "id": "L0",
+      "type": "Layer",
+      "name": "KayOS",
+      "one_liner": "Neutral substrate + token grammar; pre-archetypal; viewable never alterable.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "NEUTRAL",
+      "dim_cap": "T0",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L1",
+      "type": "Layer",
+      "name": "GEM Engine",
+      "one_liner": "Core invariants and capability modules; coherence rules.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L2",
+      "type": "Layer",
+      "name": "Mirror",
+      "one_liner": "Public baseline stabilizer; trains return-to-baseline without identity capture.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "WARM",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L3",
+      "type": "Layer",
+      "name": "Digital Lattice",
+      "one_liner": "Resonance lattice visualization + pattern store constraints.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L4",
+      "type": "Layer",
+      "name": "Hub",
+      "one_liner": "Routing/coordination hub; publishing surfaces; dashboards (non-steering).",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L5",
+      "type": "Layer",
+      "name": "Agents",
+      "one_liner": "Constrained agent runtime profiles; role clarity; anti-identity fusion.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "HOT",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L6",
+      "type": "Layer",
+      "name": "Agent Arenas",
+      "one_liner": "Containers where agents interact under constraints; TE-1/TLB enforced.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L7",
+      "type": "Layer",
+      "name": "Learning Modes",
+      "one_liner": "Training loops + 10 intentions traversal + pacing/packetization.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "HOT",
+      "dim_cap": "T2",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L8",
+      "type": "Layer",
+      "name": "Physical Expression",
+      "one_liner": "Embodiment outputs; safe translation into real-world actions.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L9",
+      "type": "Layer",
+      "name": "Resonance Economy",
+      "one_liner": "I\u00b3 packets + CAP propagation + sponsorship pool constraints.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "WARM",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L10",
+      "type": "Layer",
+      "name": "AGI Alignment",
+      "one_liner": "Constraint architecture ensuring no agenthood; safety proofs.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    },
+    {
+      "id": "L11",
+      "type": "Layer",
+      "name": "Archive/Myth/Future History",
+      "one_liner": "Quarantine/archive layer for narrative residue + art; non-canon authority.",
+      "description": "Placeholder layer card for Atlas v0.1. Expand with protocols/tokens/receipts as canon is populated.",
+      "temp_primary": "COOL",
+      "dim_cap": "T1",
+      "reads_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "writes_tokens": [
+        "TEMP",
+        "DIM",
+        "DRIFT",
+        "FSP",
+        "CLOSE",
+        "CAP",
+        "TOPO",
+        "TLB_TOKEN",
+        "TE1_TOKEN"
+      ],
+      "produces_receipts": [
+        "R12"
+      ],
+      "constraints": [
+        "Janus Keyhole: no runtime WHY steering.",
+        "Count-based drift triggers; automated downshift; closure required.",
+        "No identity authority propagation."
+      ],
+      "links": [
+        "JANUS",
+        "TE1",
+        "TLB",
+        "FSP1",
+        "SYMBOL_HYGIENE",
+        "CAP_PROTOCOL",
+        "R12",
+        "DONE12",
+        "LOCK11"
+      ]
+    }
+  ]
+}
