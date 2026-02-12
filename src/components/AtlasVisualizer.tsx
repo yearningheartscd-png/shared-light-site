@@ -4,6 +4,23 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import * as d3 from "d3";
 import { canonData, CanonObject, CanonLink, TYPE_COLORS, TEMP_COLORS, NodeType } from "@/data/canon";
 
+// Color values for native SVG rendering (can't use Tailwind classes in SVG attrs)
+const TYPE_SVG_COLORS: Record<NodeType, string> = {
+  Layer: "#06b6d4",
+  Protocol: "#8b5cf6",
+  Token: "#10b981",
+  Receipt: "#f59e0b",
+  Gate: "#f43f5e",
+  Artifact: "#6b7280",
+};
+
+const TEMP_SVG_COLORS: Record<string, string> = {
+  COOL: "#3b82f6",
+  WARM: "#f97316",
+  HOT: "#ef4444",
+  NEUTRAL: "#94a3b8",
+};
+
 const TYPE_ICON: Record<NodeType, string> = {
   Layer: "M12 2L2 7l10 5 10-5-10-5Z M2 17l10 5 10-5 M2 12l10 5 10-5",
   Protocol: "M4 4h16v16H4z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3",
@@ -21,9 +38,43 @@ function SvgIcon({ type, size = 14 }: { type: string; size?: number }) {
   );
 }
 
-/** Returns true if width is phone-sized */
-function isMobile(width: number) {
+function isMobileWidth(width: number) {
   return width < 640;
+}
+
+/** Calculate bounding box of all nodes with padding */
+function getNodeBounds(nodes: CanonObject[], padding = 80) {
+  if (nodes.length === 0) return { x: 0, y: 0, w: 800, h: 600 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    if (n.x !== undefined && n.y !== undefined) {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x);
+      maxY = Math.max(maxY, n.y);
+    }
+  }
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    w: maxX - minX + padding * 2,
+    h: maxY - minY + padding * 2,
+  };
+}
+
+/** Calculate zoom transform to fit bounds into viewport */
+function fitBoundsTransform(
+  bounds: { x: number; y: number; w: number; h: number },
+  viewW: number,
+  viewH: number,
+  maxScale = 1.2,
+) {
+  const scale = Math.min(maxScale, viewW / bounds.w, viewH / bounds.h);
+  const cx = bounds.x + bounds.w / 2;
+  const cy = bounds.y + bounds.h / 2;
+  const tx = viewW / 2 - cx * scale;
+  const ty = viewH / 2 - cy * scale;
+  return d3.zoomIdentity.translate(tx, ty).scale(scale);
 }
 
 export default function AtlasVisualizer() {
@@ -41,6 +92,20 @@ export default function AtlasVisualizer() {
   const simRef = useRef<{ nodes: CanonObject[]; links: CanonLink[] }>({ nodes: [], links: [] });
   const [, forceRender] = useState(0);
 
+  /** Fit the view to show all nodes */
+  const fitToContent = useCallback((animate = true) => {
+    if (!svgRef.current || !zoomRef.current) return;
+    const { width, height } = sizeRef.current;
+    const bounds = getNodeBounds(simRef.current.nodes);
+    const t = fitBoundsTransform(bounds, width, height);
+    const svg = d3.select(svgRef.current);
+    if (animate) {
+      svg.transition().duration(750).call(zoomRef.current.transform, t);
+    } else {
+      svg.call(zoomRef.current.transform, t);
+    }
+  }, []);
+
   useEffect(() => {
     const initialNodes: CanonObject[] = JSON.parse(JSON.stringify(canonData.objects));
     const initialLinks: CanonLink[] = initialNodes.flatMap((source) =>
@@ -57,13 +122,14 @@ export default function AtlasVisualizer() {
     const height = container ? container.clientHeight : 600;
     sizeRef.current = { width, height };
 
-    const mobile = isMobile(width);
+    const mobile = isMobileWidth(width);
 
-    // Tighter simulation on mobile — nodes stay closer together
-    const linkDist = mobile ? 120 : 220;
-    const chargeStr = mobile ? -500 : -1200;
-    const collideR = mobile ? 55 : 110;
+    // Tighter simulation on mobile so graph is compact enough to fit on screen
+    const linkDist = mobile ? 100 : 220;
+    const chargeStr = mobile ? -400 : -1200;
+    const collideR = mobile ? 40 : 110;
 
+    // Center the simulation at the center of the viewport
     const simulation = d3
       .forceSimulation(simRef.current.nodes as d3.SimulationNodeDatum[])
       .force("link", d3.forceLink(simRef.current.links as d3.SimulationLinkDatum<d3.SimulationNodeDatum>[]).id((d: any) => d.id).distance(linkDist))
@@ -73,6 +139,16 @@ export default function AtlasVisualizer() {
       .on("tick", () => {
         forceRender((t) => t + 1);
       });
+
+    // Once the simulation settles, fit the view to the content
+    simulation.on("end", () => {
+      fitToContent(false);
+    });
+
+    // Also fit after ~1 second when layout is mostly stable (don't wait for full end)
+    const earlyFitTimer = setTimeout(() => {
+      fitToContent(false);
+    }, 1200);
 
     const svg = d3.select(svgRef.current!);
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -84,13 +160,10 @@ export default function AtlasVisualizer() {
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    // Start more zoomed out on mobile so the full graph is visible
-    const initialScale = mobile ? 0.35 : 0.8;
-    const offsetX = mobile ? width * 0.1 : 0;
-    const offsetY = mobile ? height * 0.05 : 0;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(offsetX, offsetY).scale(initialScale));
+    // Start with an identity transform — the earlyFitTimer will center properly
+    svg.call(zoom.transform, d3.zoomIdentity);
 
-    // ResizeObserver for container-based sizing
+    // ResizeObserver
     let resizeObserver: ResizeObserver | null = null;
     if (container) {
       resizeObserver = new ResizeObserver((entries) => {
@@ -105,21 +178,25 @@ export default function AtlasVisualizer() {
     return () => {
       simulation.stop();
       resizeObserver?.disconnect();
+      clearTimeout(earlyFitTimer);
     };
-  }, []);
+  }, [fitToContent]);
 
-  const handleZoomIn = () => { if (svgRef.current && zoomRef.current) d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1.3); };
-  const handleZoomOut = () => { if (svgRef.current && zoomRef.current) d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1 / 1.3); };
-  const handleFit = () => {
+  // Zoom buttons zoom toward the center of the current viewport
+  const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return;
-    const { width } = sizeRef.current;
-    const mobile = isMobile(width);
-    const scale = mobile ? 0.35 : 0.8;
-    const offsetX = mobile ? width * 0.1 : 0;
-    const offsetY = mobile ? sizeRef.current.height * 0.05 : 0;
-    d3.select(svgRef.current).transition().duration(750).call(
-      zoomRef.current.transform,
-      d3.zoomIdentity.translate(offsetX, offsetY).scale(scale)
+    const { width, height } = sizeRef.current;
+    d3.select(svgRef.current).transition().duration(300).call(
+      zoomRef.current.scaleBy, 1.4,
+      [width / 2, height / 2]
+    );
+  };
+  const handleZoomOut = () => {
+    if (!svgRef.current || !zoomRef.current) return;
+    const { width, height } = sizeRef.current;
+    d3.select(svgRef.current).transition().duration(300).call(
+      zoomRef.current.scaleBy, 1 / 1.4,
+      [width / 2, height / 2]
     );
   };
 
@@ -127,13 +204,16 @@ export default function AtlasVisualizer() {
     (node: CanonObject) => {
       if (!node || !svgRef.current || !zoomRef.current) return;
       const { width, height } = sizeRef.current;
-      const mobile = isMobile(width);
-      // On mobile, center higher so node isn't behind the bottom panel
-      const k = mobile ? 1.0 : Math.max(1.5, transform.k);
+      const mobile = isMobileWidth(width);
+      const k = mobile ? 0.9 : Math.max(1.5, transform.k);
       const x = width / 2 - (node.x || 0) * k;
-      const yOffset = mobile ? height * 0.3 : height / 2;
-      const y = yOffset - (node.y || 0) * k;
-      d3.select(svgRef.current).transition().duration(750).call(zoomRef.current.transform, d3.zoomIdentity.translate(x, y).scale(k));
+      // On mobile, center in the top third so the node isn't behind the bottom panel
+      const yTarget = mobile ? height * 0.3 : height / 2;
+      const y = yTarget - (node.y || 0) * k;
+      d3.select(svgRef.current).transition().duration(750).call(
+        zoomRef.current.transform,
+        d3.zoomIdentity.translate(x, y).scale(k)
+      );
     },
     [transform.k]
   );
@@ -150,7 +230,9 @@ export default function AtlasVisualizer() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.toLowerCase();
-    const found = simRef.current.nodes.find((n) => n.id.toLowerCase().includes(query) || n.name.toLowerCase().includes(query));
+    const found = simRef.current.nodes.find((n) =>
+      n.id.toLowerCase().includes(query) || n.name.toLowerCase().includes(query)
+    );
     if (found) {
       handleNodeClick(found);
       setSearchOpen(false);
@@ -159,9 +241,9 @@ export default function AtlasVisualizer() {
 
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#020617] text-slate-200 overflow-hidden">
-      {/* Top Controls — compact single row on mobile */}
+      {/* Top Controls */}
       <header className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 z-10 flex items-center justify-between gap-2 pointer-events-none">
-        {/* Title — hidden on mobile to save space */}
+        {/* Title — hidden on mobile */}
         <div className="pointer-events-auto bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg px-3 py-1.5 sm:py-2 hidden sm:flex items-center gap-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -172,12 +254,11 @@ export default function AtlasVisualizer() {
           </div>
         </div>
 
-        {/* Right side controls */}
         <div className="pointer-events-auto flex gap-1.5 sm:gap-3 items-center ml-auto">
-          {/* Mobile: search toggle button. Desktop: always-visible search */}
+          {/* Mobile search toggle */}
           <button
             onClick={() => setSearchOpen(!searchOpen)}
-            className="sm:hidden bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-300 hover:text-white"
+            className="sm:hidden bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-300 hover:text-white"
             title="Search"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -185,14 +266,10 @@ export default function AtlasVisualizer() {
             </svg>
           </button>
 
+          {/* Desktop search */}
           <form onSubmit={handleSearch} className="relative hidden sm:block">
-            <input
-              type="text"
-              placeholder="Search nodes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-56 text-slate-200"
-            />
+            <input type="text" placeholder="Search nodes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-56 text-slate-200" />
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-3 text-slate-400">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -200,11 +277,11 @@ export default function AtlasVisualizer() {
 
           {/* Zoom controls */}
           <div className="flex bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg overflow-hidden shrink-0">
-            <button onClick={handleZoomIn} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center text-base font-bold" title="Zoom In">+</button>
+            <button onClick={handleZoomIn} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center text-base font-bold" title="Zoom In">+</button>
             <div className="w-px bg-slate-700" />
-            <button onClick={handleZoomOut} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center text-base font-bold" title="Zoom Out">&minus;</button>
+            <button onClick={handleZoomOut} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center text-base font-bold" title="Zoom Out">&minus;</button>
             <div className="w-px bg-slate-700" />
-            <button onClick={handleFit} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center text-xs" title="Fit">Fit</button>
+            <button onClick={() => fitToContent(true)} className="p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center text-xs" title="Fit All">Fit</button>
           </div>
         </div>
       </header>
@@ -213,22 +290,12 @@ export default function AtlasVisualizer() {
       {searchOpen && (
         <div className="absolute top-14 left-2 right-2 z-20 sm:hidden">
           <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              placeholder="Search nodes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-              className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg pl-9 pr-12 py-3 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-full text-slate-200"
-            />
+            <input type="text" placeholder="Search nodes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoFocus
+              className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg pl-9 pr-12 py-3 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 w-full text-slate-200" />
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-3.5 text-slate-400">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <button
-              type="button"
-              onClick={() => setSearchOpen(false)}
-              className="absolute right-2 top-1.5 p-2 text-slate-400 hover:text-white"
-            >
+            <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-2 top-1.5 p-2 text-slate-400 hover:text-white">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </form>
@@ -239,14 +306,19 @@ export default function AtlasVisualizer() {
       <svg
         ref={svgRef}
         className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing touch-none"
-        onClick={(e) => { if ((e.target as Element).tagName === "svg" || (e.target as Element).tagName === "rect") { setIsSidebarOpen(false); setSearchOpen(false); } }}
+        onClick={(e) => {
+          if ((e.target as Element).tagName === "svg" || (e.target as Element).tagName === "rect") {
+            setIsSidebarOpen(false);
+            setSearchOpen(false);
+          }
+        }}
       >
         <defs>
           <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#0f172a" stopOpacity="1" />
             <stop offset="100%" stopColor="#020617" stopOpacity="1" />
           </radialGradient>
-          <marker id="arrowhead" viewBox="-0 -5 10 10" refX="28" refY="0" orient="auto" markerWidth="6" markerHeight="6">
+          <marker id="arrowhead" viewBox="-0 -5 10 10" refX="15" refY="0" orient="auto" markerWidth="6" markerHeight="6">
             <path d="M 0,-5 L 10,0 L 0,5" fill="#475569" />
           </marker>
         </defs>
@@ -254,24 +326,65 @@ export default function AtlasVisualizer() {
         <rect width="100%" height="100%" fill="url(#bg-glow)" />
 
         <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
+          {/* Links */}
           <g>
             {simRef.current.links.map((link, i) => {
               const s = link.source as CanonObject;
               const t = link.target as CanonObject;
+              if (!s.x || !s.y || !t.x || !t.y) return null;
               return (
-                <line key={i} x1={s.x || 0} y1={s.y || 0} x2={t.x || 0} y2={t.y || 0} stroke="#334155" strokeWidth={1.5} strokeOpacity={transform.k < 0.6 ? 0.3 : 0.8} markerEnd="url(#arrowhead)" />
+                <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                  stroke="#334155" strokeWidth={1.5}
+                  strokeOpacity={transform.k < 0.5 ? 0.2 : 0.7}
+                  markerEnd="url(#arrowhead)" />
               );
             })}
           </g>
+
+          {/* Nodes — native SVG at low zoom, foreignObject at high zoom */}
           <g>
-            {simRef.current.nodes.map((node) => (
-              <NodeElement key={node.id} node={node} zoom={transform.k} isSelected={selectedNode?.id === node.id} onClick={handleNodeClick} />
-            ))}
+            {simRef.current.nodes.map((node) => {
+              if (node.x === undefined || node.y === undefined) return null;
+
+              // At low zoom: use native SVG circles (reliable on all devices)
+              if (transform.k < 0.7) {
+                const color = TYPE_SVG_COLORS[node.type] || "#6b7280";
+                const r = transform.k < 0.4 ? 12 : 8;
+                const isSelected = selectedNode?.id === node.id;
+                return (
+                  <g key={node.id} onClick={(e) => { e.stopPropagation(); handleNodeClick(node); }} style={{ cursor: "pointer" }}>
+                    {/* Glow ring for selected */}
+                    {isSelected && <circle cx={node.x} cy={node.y} r={r + 6} fill="none" stroke="white" strokeWidth={2} opacity={0.8} />}
+                    {/* Main circle */}
+                    <circle cx={node.x} cy={node.y} r={r} fill={color} opacity={0.9} stroke={isSelected ? "white" : color} strokeWidth={isSelected ? 2 : 1} />
+                    {/* Temperature dot */}
+                    {node.temp_primary !== "NEUTRAL" && (
+                      <circle cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={3}
+                        fill={TEMP_SVG_COLORS[node.temp_primary] || "#94a3b8"}
+                        stroke="#020617" strokeWidth={1} />
+                    )}
+                    {/* Label at mid-low zoom */}
+                    {transform.k >= 0.4 && (
+                      <text x={node.x} y={node.y + r + 12} textAnchor="middle"
+                        fill="#94a3b8" fontSize="10" fontFamily="monospace" fontWeight="bold">
+                        {node.id}
+                      </text>
+                    )}
+                  </g>
+                );
+              }
+
+              // At higher zoom: foreignObject with full card UI
+              return (
+                <NodeCard key={node.id} node={node} zoom={transform.k}
+                  isSelected={selectedNode?.id === node.id} onClick={handleNodeClick} />
+              );
+            })}
           </g>
         </g>
       </svg>
 
-      {/* Detail Panel — bottom sheet on mobile, sidebar on desktop */}
+      {/* Detail Panel */}
       <div className={`
         absolute z-20 transition-transform duration-300 ease-out
         inset-x-0 bottom-0 top-auto max-h-[55vh]
@@ -281,11 +394,9 @@ export default function AtlasVisualizer() {
       `}>
         {selectedNode && (
           <>
-            {/* Mobile drag handle */}
             <div className="sm:hidden flex justify-center pt-2 pb-1">
               <div className="w-10 h-1 rounded-full bg-slate-600" />
             </div>
-
             <div className="flex justify-between items-start px-4 pb-3 pt-1 sm:p-5 border-b border-slate-800">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -328,22 +439,22 @@ export default function AtlasVisualizer() {
         )}
       </div>
 
-      {/* Legend — compact on mobile */}
+      {/* Legend */}
       <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 z-10 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg sm:rounded-xl p-1.5 sm:p-3">
         <div className="flex flex-wrap gap-1.5 sm:gap-4 text-[9px] sm:text-[10px]">
-          <span className="flex items-center gap-1"><span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-cyan-500" /> Layer</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-violet-500" /> Protocol</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500" /> Token</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-amber-500" /> Receipt</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-rose-500" /> Gate</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500" /> Layer</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-violet-500" /> Protocol</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Token</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Receipt</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500" /> Gate</span>
         </div>
       </div>
     </div>
   );
 }
 
-function NodeElement({ node, zoom, isSelected, onClick }: { node: CanonObject; zoom: number; isSelected: boolean; onClick: (n: CanonObject) => void }) {
-  const isMacro = zoom < 0.7;
+/** Full card node — only used at zoom >= 0.7 */
+function NodeCard({ node, zoom, isSelected, onClick }: { node: CanonObject; zoom: number; isSelected: boolean; onClick: (n: CanonObject) => void }) {
   const isMid = zoom >= 0.7 && zoom < 1.4;
   const isMicro = zoom >= 1.4;
 
@@ -351,25 +462,21 @@ function NodeElement({ node, zoom, isSelected, onClick }: { node: CanonObject; z
   const tempClass = TEMP_COLORS[node.temp_primary] || "bg-slate-400";
   const FO_W = 220, FO_H = 140;
 
-  if (node.x === undefined || node.y === undefined) return null;
-
   return (
-    <foreignObject x={node.x - FO_W / 2} y={node.y - FO_H / 2} width={FO_W} height={FO_H} style={{ overflow: "visible" }}>
+    <foreignObject x={(node.x || 0) - FO_W / 2} y={(node.y || 0) - FO_H / 2} width={FO_W} height={FO_H} style={{ overflow: "visible" }}>
       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: 8 }}>
         <div
           onClick={(e) => { e.stopPropagation(); onClick(node); }}
           className={`pointer-events-auto cursor-pointer relative flex flex-col items-center justify-center border-2 backdrop-blur-md transition-all duration-300 shadow-lg hover:brightness-125
             ${colors.border} ${colors.bg} ${colors.text}
             ${isSelected ? "ring-4 ring-white shadow-2xl z-10 scale-105" : ""}
-            ${isMacro ? "w-8 h-8 rounded-full border-[3px]" : ""}
             ${isMid ? "w-24 h-8 rounded-full px-2" : ""}
             ${isMicro ? "w-52 rounded-xl p-3" : ""}
           `}
         >
-          {(isMid || isMicro) && node.temp_primary !== "NEUTRAL" && (
+          {node.temp_primary !== "NEUTRAL" && (
             <div className={`absolute ${isMid ? "-right-1 -top-1 w-2.5 h-2.5" : "-right-1.5 -top-1.5 w-3.5 h-3.5"} rounded-full border border-slate-900 ${tempClass}`} />
           )}
-          {isMacro && <div className={`w-full h-full rounded-full ${node.temp_primary !== "NEUTRAL" ? tempClass : ""}`} />}
           {isMid && (
             <div className="flex items-center justify-center gap-1.5 w-full">
               <SvgIcon type={node.type} size={12} />
