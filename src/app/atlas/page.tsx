@@ -2,8 +2,15 @@
 
 import dynamic from "next/dynamic";
 
-const AtlasVisualizer = dynamic(() => import("@/components/AtlasVisualizer"), { ssr: false });
+const UniverseMap = dynamic(
+  () => import("@/components/universe/UniverseMap"),
+  { ssr: false, loading: () => (
+    <div className="w-full h-full bg-[#010409] flex items-center justify-center">
+      <div className="text-white/30 font-mono text-sm">Loading universe...</div>
+    </div>
+  )},
+);
 
 export default function AtlasPage() {
-  return <AtlasVisualizer />;
+  return <UniverseMap />;
 }

@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { canonData } from "@/data/canon";
+import { ARCHETYPES, CANON_TO_ARCHETYPE, ELEMENT_COLORS, AIAM_COLOR, type Element } from "@/data/archetypes";
+import { archetypeTorusPosition, canonTorusPosition } from "@/lib/torus-layout";
 
 /* ═══════════════════════════════════════════════════════════════
    Types — state-driven, no metaphysics
@@ -12,13 +14,14 @@ export interface UNode {
   type: string;
   name: string;
   position: [number, number, number];
-  stability: number;   // 0-1  (red → green)
+  stability: number;   // 0-1  (bright → dim)
   intensity: number;   // 0-1  (controls radius)
   active: boolean;
   history: { stability: number; timestamp: number }[];
   lastUpdated: number;
   openTasks: number;
   lastClosure: number | null;
+  element?: Element;   // "fire" | "earth" | "water" | undefined
 }
 
 export interface UEdge {
@@ -30,29 +33,13 @@ export interface UEdge {
 export interface UniverseState {
   nodes: UNode[];
   edges: UEdge[];
-  timeIndex: number;      // current playback position
-  maxTimeIndex: number;   // total history depth
+  timeIndex: number;
+  maxTimeIndex: number;
   selectedId: string | null;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Position generation — golden-angle sphere distribution
-   ═══════════════════════════════════════════════════════════════ */
-
-function spherePoint(index: number, total: number, radius: number): [number, number, number] {
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const y = 1 - (index / (total - 1)) * 2; // -1 to 1
-  const r = Math.sqrt(1 - y * y);
-  const theta = golden * index;
-  return [
-    Math.cos(theta) * r * radius,
-    y * radius,
-    Math.sin(theta) * r * radius,
-  ];
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Seed data from canon — deterministic initial state
+   Helpers
    ═══════════════════════════════════════════════════════════════ */
 
 function seedHash(s: string): number {
@@ -61,81 +48,151 @@ function seedHash(s: string): number {
   return (Math.abs(h) % 1000) / 1000;
 }
 
+function makeHistory(stability: number, seed: number, now: number) {
+  return Array.from({ length: 10 }, (_, t) => ({
+    stability: Math.max(0, Math.min(1, stability + Math.sin(t * 0.5 + seed * 6) * 0.15)),
+    timestamp: now - (10 - t) * 5000,
+  }));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Build state from archetype geometry
+   ═══════════════════════════════════════════════════════════════ */
+
 function buildInitialState(): UniverseState {
-  const typeRadius: Record<string, number> = {
-    Layer: 10,
-    Protocol: 18,
-    Token: 24,
-    Receipt: 14,
-    Gate: 20,
-    Artifact: 16,
-  };
-
-  const typeGroups: Record<string, typeof canonData.objects> = {};
-  for (const obj of canonData.objects) {
-    if (!typeGroups[obj.type]) typeGroups[obj.type] = [];
-    typeGroups[obj.type].push(obj);
-  }
-
   const now = Date.now();
   const nodes: UNode[] = [];
-
-  for (const [type, group] of Object.entries(typeGroups)) {
-    const r = typeRadius[type] ?? 16;
-    group.forEach((obj, i) => {
-      const pos = spherePoint(i, Math.max(group.length, 2), r);
-      const seed = seedHash(obj.id);
-      const stability = 0.3 + seed * 0.6;                     // 0.3-0.9
-      const intensity = 0.2 + seedHash(obj.id + "i") * 0.6;   // 0.2-0.8
-
-      // Build synthetic history (10 past snapshots)
-      const history = Array.from({ length: 10 }, (_, t) => ({
-        stability: Math.max(0, Math.min(1, stability + (Math.sin(t * 0.5 + seed * 6) * 0.15))),
-        timestamp: now - (10 - t) * 5000,
-      }));
-
-      nodes.push({
-        id: obj.id,
-        type: obj.type,
-        name: obj.name,
-        position: pos,
-        stability,
-        intensity,
-        active: seed > 0.4,
-        history,
-        lastUpdated: now,
-        openTasks: Math.floor(seed * 5),
-        lastClosure: seed > 0.5 ? now - Math.floor(seed * 60000) : null,
-      });
-    });
-  }
-
-  // Edges from canon links
-  const nodeIds = new Set(nodes.map((n) => n.id));
   const edges: UEdge[] = [];
   const edgeSet = new Set<string>();
 
+  const addEdge = (a: string, b: string, str: number) => {
+    const key = [a, b].sort().join("|");
+    if (edgeSet.has(key)) return;
+    edgeSet.add(key);
+    edges.push({ source: a, target: b, strength: str });
+  };
+
+  /* ── aIAM center node ── */
+  nodes.push({
+    id: "AIAM",
+    type: "Center",
+    name: "aIAM",
+    position: [0, 0, 0],
+    stability: 1.0,
+    intensity: 0.5,
+    active: true,
+    history: makeHistory(1.0, 0.5, now),
+    lastUpdated: now,
+    openTasks: 0,
+    lastClosure: now,
+  });
+
+  /* ── 12 archetype nodes on torus surface ── */
+  for (const arch of ARCHETYPES) {
+    const pos = archetypeTorusPosition(arch.angleDeg, arch.element);
+
+    const seed = seedHash(arch.id);
+    const stability = 0.3 + seed * 0.6;
+    const intensity = 0.2 + seedHash(arch.id + "i") * 0.6;
+
+    nodes.push({
+      id: arch.id,
+      type: "Archetype",
+      name: arch.name,
+      position: pos,
+      stability,
+      intensity,
+      active: seed > 0.4,
+      history: makeHistory(stability, seed, now),
+      lastUpdated: now,
+      openTasks: Math.floor(seed * 5),
+      lastClosure: seed > 0.5 ? now - Math.floor(seed * 60000) : null,
+      element: arch.element,
+    });
+
+    // Spoke to center
+    addEdge(arch.id, "AIAM", 0.7);
+  }
+
+  /* ── Element square edges ── */
+  const byElement: Record<Element, string[]> = { fire: [], earth: [], water: [] };
+  for (const arch of ARCHETYPES) {
+    byElement[arch.element].push(arch.id);
+  }
+  for (const ids of Object.values(byElement)) {
+    // ids are already in angle-sorted order because ARCHETYPES is sorted by angleDeg
+    for (let i = 0; i < ids.length; i++) {
+      addEdge(ids[i], ids[(i + 1) % ids.length], 0.9);
+    }
+  }
+
+  /* ── Canon objects as sub-ring nodes ── */
+  // Track which canon IDs belong to which archetype for sub-positioning
+  const archCanonIndex: Record<string, number> = {};
+  for (const arch of ARCHETYPES) {
+    arch.canonIds.forEach((cid, idx) => {
+      archCanonIndex[cid] = idx;
+    });
+  }
+
+  for (const obj of canonData.objects) {
+    const parentArchId = CANON_TO_ARCHETYPE[obj.id];
+    const parentArch = parentArchId
+      ? ARCHETYPES.find((a) => a.id === parentArchId)
+      : undefined;
+
+    let position: [number, number, number];
+    let element: Element | undefined;
+
+    if (parentArch) {
+      const subIdx = archCanonIndex[obj.id] ?? 0;
+      const count = parentArch.canonIds.length;
+      position = canonTorusPosition(parentArch.angleDeg, parentArch.element, subIdx, count);
+      element = parentArch.element;
+    } else {
+      // Unmapped — place near origin
+      const seed = seedHash(obj.id);
+      position = [seed * 4 - 2, 0, seed * 4 - 2];
+    }
+
+    const seed = seedHash(obj.id);
+    const stability = 0.3 + seed * 0.6;
+    const intensity = 0.2 + seedHash(obj.id + "i") * 0.6;
+
+    nodes.push({
+      id: obj.id,
+      type: obj.type,
+      name: obj.name,
+      position,
+      stability,
+      intensity,
+      active: seed > 0.4,
+      history: makeHistory(stability, seed, now),
+      lastUpdated: now,
+      openTasks: Math.floor(seed * 5),
+      lastClosure: seed > 0.5 ? now - Math.floor(seed * 60000) : null,
+      element,
+    });
+  }
+
+  /* ── Canon link edges ── */
+  const nodeIds = new Set(nodes.map((n) => n.id));
   for (const obj of canonData.objects) {
     for (const linkId of obj.links) {
       if (!nodeIds.has(linkId)) continue;
-      const key = [obj.id, linkId].sort().join("|");
-      if (edgeSet.has(key)) continue;
-      edgeSet.add(key);
-
       const srcNode = nodes.find((n) => n.id === obj.id);
       const tgtNode = nodes.find((n) => n.id === linkId);
       const strength = srcNode && tgtNode
         ? (srcNode.stability + tgtNode.stability) / 2
         : 0.5;
-
-      edges.push({ source: obj.id, target: linkId, strength });
+      addEdge(obj.id, linkId, strength);
     }
   }
 
   return {
     nodes,
     edges,
-    timeIndex: 9,  // latest
+    timeIndex: 9,
     maxTimeIndex: 9,
     selectedId: null,
   };
@@ -148,16 +205,13 @@ function buildInitialState(): UniverseState {
 export function useUniverseState() {
   const [state, setState] = useState<UniverseState>(buildInitialState);
 
-  /* ── Select a node ── */
   const selectNode = useCallback((id: string | null) => {
     setState((s) => ({ ...s, selectedId: id }));
   }, []);
 
-  /* ── Time scrub ── */
   const setTimeIndex = useCallback((idx: number) => {
     setState((s) => {
       const clamped = Math.max(0, Math.min(s.maxTimeIndex, idx));
-      // Apply historical stability at this time index
       const nodes = s.nodes.map((n) => ({
         ...n,
         stability: n.history[clamped]?.stability ?? n.stability,
@@ -166,55 +220,39 @@ export function useUniverseState() {
     });
   }, []);
 
-  /* ── Expand Scope — only if stability >= 0.4 ── */
   const expandScope = useCallback((id: string) => {
     setState((s) => ({
       ...s,
       nodes: s.nodes.map((n) =>
         n.id === id && n.stability >= 0.4
-          ? {
-              ...n,
-              intensity: Math.min(1, n.intensity + 0.1),
-              openTasks: n.openTasks + 1,
-              lastUpdated: Date.now(),
-            }
+          ? { ...n, intensity: Math.min(1, n.intensity + 0.1), openTasks: n.openTasks + 1, lastUpdated: Date.now() }
           : n,
       ),
     }));
   }, []);
 
-  /* ── Return to Baseline — increases stability, reduces intensity ── */
   const returnToBaseline = useCallback((id: string) => {
     setState((s) => ({
       ...s,
       nodes: s.nodes.map((n) =>
         n.id === id
-          ? {
-              ...n,
-              stability: Math.min(1, n.stability + 0.08),
-              intensity: Math.max(0, n.intensity - 0.12),
-              lastClosure: Date.now(),
-              openTasks: Math.max(0, n.openTasks - 1),
-              lastUpdated: Date.now(),
-            }
+          ? { ...n, stability: Math.min(1, n.stability + 0.08), intensity: Math.max(0, n.intensity - 0.12), lastClosure: Date.now(), openTasks: Math.max(0, n.openTasks - 1), lastUpdated: Date.now() }
           : n,
       ),
     }));
   }, []);
 
-  /* ── Live drift simulation — subtle state evolution ── */
   const tickRef = useRef(0);
   useEffect(() => {
     const interval = setInterval(() => {
       tickRef.current += 1;
       setState((s) => {
-        if (s.timeIndex < s.maxTimeIndex) return s; // paused in history
+        if (s.timeIndex < s.maxTimeIndex) return s;
         return {
           ...s,
           nodes: s.nodes.map((n) => {
             const drift = Math.sin(tickRef.current * 0.3 + seedHash(n.id) * 10) * 0.008;
-            const newStab = Math.max(0, Math.min(1, n.stability + drift));
-            return { ...n, stability: newStab };
+            return { ...n, stability: Math.max(0, Math.min(1, n.stability + drift)) };
           }),
         };
       });
@@ -222,11 +260,5 @@ export function useUniverseState() {
     return () => clearInterval(interval);
   }, []);
 
-  return {
-    state,
-    selectNode,
-    setTimeIndex,
-    expandScope,
-    returnToBaseline,
-  };
+  return { state, selectNode, setTimeIndex, expandScope, returnToBaseline };
 }
